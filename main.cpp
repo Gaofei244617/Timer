@@ -1,8 +1,8 @@
-////////////////////test.cpp
-#include<iostream>
-#include<string>
-#include<memory>
-#include"timer.h"
+#include <iostream>
+#include <string>
+#include <memory>
+#include "timer.h"
+#include "time_span.h"
 
 using namespace std;
 
@@ -28,6 +28,17 @@ int main()
 
     t.stop();
     std::cout << "Stop timer" << std::endl;
+
+    std::cout << "*********************************************************" << std::endl;
+
+    auto tag1 = TimeCount::now();
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    auto tag2 = TimeCount::now();
+
+    std::cout << "Second: " << TimeCount::span(tag1, tag2).getSeconds() << " s" << std::endl;
+    std::cout << "MilliSecond: " << TimeCount::span(tag1, tag2).getMilliSeconds() << " ms" << std::endl;
+    std::cout << "MicroSecond: " << TimeCount::span(tag1, tag2).getMicroSeconds() << " us" << std::endl;
+    std::cout << "NanoSecond: " << TimeCount::span(tag1, tag2).getNanoSeconds() << " ns" << std::endl;
 
     return 0;
 }
