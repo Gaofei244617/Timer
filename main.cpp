@@ -2,7 +2,7 @@
 #include <string>
 #include <memory>
 #include "timer.h"
-#include "time_span.h"
+#include "time_count.h"
 
 using namespace std;
 
