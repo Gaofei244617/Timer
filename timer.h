@@ -6,23 +6,44 @@
 #include <thread>
 #include <atomic>
 #include <memory>
+#include <vector>
 
 class Timer 
 {
 private:
+    const int buffer_size = 128;
     std::atomic<bool> stop_flag;
     std::atomic<bool> try_to_stop;
-    std::function<void()> m_task;
+    std::function<void()> task;
+    std::chrono::time_point<std::chrono::high_resolution_clock> time_point;
+    std::vector<std::thread> thread_vec;
+    int index;
+    std::thread thr;
 
 public:
-    Timer() :stop_flag(true), try_to_stop(false) {}
-    Timer(const Timer& t):stop_flag(t.stop_flag.load()), try_to_stop(t.try_to_stop.load()){}
-    ~Timer() { stop(); }
+    Timer() 
+        :stop_flag(true), 
+        try_to_stop(false),
+        thread_vec(buffer_size),
+        index(0)
+    {}
+
+    Timer(const Timer& t)
+        :stop_flag(t.stop_flag.load()), 
+        try_to_stop(t.try_to_stop.load()),
+        thread_vec(buffer_size),
+        index(0)
+    {}
+
+    ~Timer() 
+    { 
+        stop(); 
+    }
 
     template<typename F, class... Args>
     void addTask(F&& f, Args&&... args)
     {
-        m_task = std::bind(std::forward<F>(f), std::forward<Args>(args)...);
+        task = std::bind(std::forward<F>(f), std::forward<Args>(args)...);
     }
 
     void start(const int interval)
@@ -32,14 +53,25 @@ public:
             return;
         }
         stop_flag = false;
-        std::thread([this, interval]() {
+        time_point = std::chrono::high_resolution_clock::now();
+        thr = std::thread([this, interval]() {
             while (try_to_stop == false)
             {
-                std::this_thread::sleep_for(std::chrono::milliseconds(interval));
-                std::thread(m_task).detach();
+                time_point = time_point + std::chrono::milliseconds(interval);
+                std::this_thread::sleep_until(time_point);
+                if (thread_vec[index].joinable())
+                {
+                    thread_vec[index].join();
+                }
+                thread_vec[index] = std::thread(task);
+                index++;
+                if (index == buffer_size)
+                {
+                    index = 0;
+                }
             }
             stop_flag = true;
-            }).detach();
+            });
     }
 
     void stop()
@@ -53,6 +85,19 @@ public:
         if (stop_flag == true)
         {
             try_to_stop = false;
+        }
+
+        if (thr.joinable())
+        {
+            thr.join();
+        }
+
+        for (int i = 0; i < buffer_size; i++)
+        {
+            if (thread_vec[i].joinable())
+            {
+                thread_vec[i].join();
+            }
         }
     }
 };
